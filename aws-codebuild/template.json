@@ -1,0 +1,130 @@
+{
+    "Parameters": {
+      "AccountId": {}
+    },
+    "Resources": {
+        "CodeBuildProject": {
+            "Properties": {
+                "Artifacts": {
+                    "Type": "no_artifacts"
+                },
+                "Description": "",
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/standard:4.0",
+                    "PrivilegedMode": true,
+                    "Type": "LINUX_CONTAINER",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "AWS_DEFAULT_REGION",
+                            "Value": "us-east-1"
+                        },
+                        {
+                            "Name": "AWS_ACCOUNT_ID",
+                            "Value": { "Ref": "AccountId" }
+                        }
+                    ]
+                },
+                "Name": "pinning-test-ecr",
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "CodeBuildRole",
+                        "Arn"
+                    ]
+                },
+                "Source": {
+                    "Auth": {
+                        "Type": "OAUTH"
+                    },
+                    "Location": "https://github.com/slenderslack/pinning-test-ecr.git",
+                    "Type": "GITHUB"
+                },
+                "Tags": [
+                    {
+                        "Key": "Key1",
+                        "Value": "Value1"
+                    },
+                    {
+                        "Key": "Key2",
+                        "Value": "Value2"
+                    }
+                ],
+                "TimeoutInMinutes": 10,
+                "Triggers": {
+                    "FilterGroups": [
+                        [
+                            {
+                                "Pattern": "PUSH",
+                                "Type": "EVENT"
+                            },
+                            {
+                                "Pattern": "^refs/heads/.*$",
+                                "Type": "HEAD_REF"
+                            }
+                        ]
+                    ],
+                    "Webhook": true
+                }
+            },
+            "Type": "AWS::CodeBuild::Project"
+        },
+        "CodeBuildRole": {
+            "Properties": {
+                "RoleName": "slenderslack-code-build",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codebuild.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:*",
+                                        "ec2:CreateNetworkInterface",
+                                        "ec2:DescribeNetworkInterfaces",
+                                        "ec2:DeleteNetworkInterface",
+                                        "ec2:DescribeSubnets",
+                                        "ec2:DescribeSecurityGroups",
+                                        "ec2:DescribeDhcpOptions",
+                                        "ec2:DescribeVpcs",
+                                        "ec2:CreateNetworkInterfacePermission",
+                                        "s3:GetObject",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketAcl",
+                                        "s3:GetBucketLocation",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:CompleteLayerUpload",
+                                        "ecr:GetAuthorizationToken",
+                                        "ecr:InitiateLayerUpload",
+                                        "ecr:PutImage",
+                                        "ecr:UploadLayerPart"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "CodeBuildAccess"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        }
+    }
+}
