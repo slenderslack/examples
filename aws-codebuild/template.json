@@ -1,6 +1,9 @@
 {
     "Parameters": {
-      "AccountId": {}
+      "AccountId": {
+          "Type": "String",
+          "Description": "AWS account"
+      }
     },
     "Resources": {
         "CodeBuildProject": {
@@ -8,7 +11,7 @@
                 "Artifacts": {
                     "Type": "no_artifacts"
                 },
-                "Description": "",
+                "Description": "created by slenderslack codebuild stack",
                 "Environment": {
                     "ComputeType": "BUILD_GENERAL1_SMALL",
                     "Image": "aws/codebuild/standard:4.0",
@@ -25,7 +28,7 @@
                         }
                     ]
                 },
-                "Name": "pinning-test-ecr",
+                "Name": "ecr-base",
                 "ServiceRole": {
                     "Fn::GetAtt": [
                         "CodeBuildRole",
@@ -36,19 +39,64 @@
                     "Auth": {
                         "Type": "OAUTH"
                     },
-                    "Location": "https://github.com/slenderslack/pinning-test-ecr.git",
+                    "Location": "https://github.com/slenderslack/ecr-base.git",
                     "Type": "GITHUB"
                 },
-                "Tags": [
-                    {
-                        "Key": "Key1",
-                        "Value": "Value1"
+                "TimeoutInMinutes": 10,
+                "Triggers": {
+                    "FilterGroups": [
+                        [
+                            {
+                                "Pattern": "PUSH",
+                                "Type": "EVENT"
+                            },
+                            {
+                                "Pattern": "^refs/heads/.*$",
+                                "Type": "HEAD_REF"
+                            }
+                        ]
+                    ],
+                    "Webhook": true
+                }
+            },
+            "Type": "AWS::CodeBuild::Project"
+        },
+        "CodeBuildProject1": {
+            "Properties": {
+                "Artifacts": {
+                    "Type": "no_artifacts"
+                },
+                "Description": "created by slenderslack codebuild stack",
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/standard:4.0",
+                    "PrivilegedMode": true,
+                    "Type": "LINUX_CONTAINER",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "AWS_DEFAULT_REGION",
+                            "Value": "us-east-1"
+                        },
+                        {
+                            "Name": "AWS_ACCOUNT_ID",
+                            "Value": { "Ref": "AccountId" }
+                        }
+                    ]
+                },
+                "Name": "ecr-service",
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "CodeBuildRole",
+                        "Arn"
+                    ]
+                },
+                "Source": {
+                    "Auth": {
+                        "Type": "OAUTH"
                     },
-                    {
-                        "Key": "Key2",
-                        "Value": "Value2"
-                    }
-                ],
+                    "Location": "https://github.com/slenderslack/ecr-service.git",
+                    "Type": "GITHUB"
+                },
                 "TimeoutInMinutes": 10,
                 "Triggers": {
                     "FilterGroups": [
@@ -107,6 +155,8 @@
                                         "s3:GetObjectVersion",
                                         "s3:GetBucketAcl",
                                         "s3:GetBucketLocation",
+                                        "ecr:BatchGetImage",
+                                        "ecr:GetDownloadUrlForLayer",
                                         "ecr:BatchCheckLayerAvailability",
                                         "ecr:CompleteLayerUpload",
                                         "ecr:GetAuthorizationToken",
