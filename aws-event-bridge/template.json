@@ -1,0 +1,203 @@
+{
+    "Parameters": {
+        "ExternalId": {
+            "Description": "Assume Role ExternalId (create a unique id)",
+            "Type": "String"
+        },
+        "Password": {
+            "Description": "ECR Integration Auth (password)",
+            "Type": "String"
+        },
+        "Url": {
+            "Description": "ECR Integration endpoint",
+            "Type": "String"
+        },
+        "Username": {
+            "Description": "ECR Integration Auth (username)",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ApiDestination": {
+            "Properties": {
+                "ConnectionArn": {
+                    "Fn::GetAtt": [
+                        "Connection",
+                        "Arn"
+                    ]
+                },
+                "Description": "Atomist ECR Integration",
+                "HttpMethod": "POST",
+                "InvocationEndpoint": {
+                    "Ref": "Url"
+                },
+                "InvocationRateLimitPerSecond": 5,
+                "Name": "Atomist"
+            },
+            "Type": "AWS::Events::ApiDestination"
+        },
+        "AssumeRoleEcrAccess": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "ExternalId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": "arn:aws:iam::689740959397:root"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "ecr:GetAuthorizationToken",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:GetRepositoryPolicy",
+                                        "ecr:DescribeRepositories",
+                                        "ecr:ListImages",
+                                        "ecr:DescribeImages",
+                                        "ecr:BatchGetImage",
+                                        "ecr:GetLifecyclePolicy",
+                                        "ecr:GetLifecyclePolicyPreview",
+                                        "ecr:ListTagsForResource",
+                                        "ecr:DescribeImageScanFindings",
+                                        "ecr:GetRegistryPolicy",
+                                        "ecr:DescribeRegistry"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "PolicyName": "EC2ContainerRegistryReadOnly"
+                    }
+                ],
+                "RoleName": "atomist-ecr-integration-1"
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "Connection": {
+            "Properties": {
+                "AuthParameters": {
+                    "BasicAuthParameters": {
+                        "Password": {
+                            "Ref": "Password"
+                        },
+                        "Username": {
+                            "Ref": "Username"
+                        }
+                    }
+                },
+                "AuthorizationType": "BASIC",
+                "Description": "Basic Auth creds for Atomist ECR Integration",
+                "Name": "Atomist"
+            },
+            "Type": "AWS::Events::Connection"
+        },
+        "InvokeApiRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "events.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "events:InvokeApiDestination"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "CodeBuildAccess"
+                    }
+                ],
+                "RoleName": "invoke-atomist-api"
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "Rule": {
+            "Properties": {
+                "Description": "send ECR pushes to Atomist",
+                "EventBusName": "default",
+                "EventPattern": {
+                    "detail": {
+                        "action-type": [
+                            "PUSH",
+                            "DELETE"
+                        ],
+                        "result": [
+                            "SUCCESS",
+                            "FAILURE"
+                        ]
+                    },
+                    "detail-type": [
+                        "ECR Image Action"
+                    ],
+                    "source": [
+                        "aws.ecr"
+                    ]
+                },
+                "Name": "Atomist",
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "InvokeApiRole",
+                        "Arn"
+                    ]
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "ApiDestination",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "atomist",
+                        "RoleArn": {
+                            "Fn::GetAtt": [
+                                "InvokeApiRole",
+                                "Arn"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        }
+    }
+}
