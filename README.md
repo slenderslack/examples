@@ -4,11 +4,11 @@
 | :---  | :--------- | :------- | :----- |
 | [ecr-base](https://github.com/slenderslack/ecr-base) | AWS CodeBuild | ECR (private) | base FROM public official-image  |
 | [ecr-service](https://github.com/slenderslack/ecr-service) | AWS CodeBuild | ECR (private) | service FROM base (private ECR image) |
-| [pinning-test-gcr](https://github.com/slenderslack/pinning-test-gcr) | Google Cloud Build | GCR (private) | 
+| [pinning-test-gcr](https://github.com/slenderslack/pinning-test-gcr) | Google Cloud Build | GCR (private) | Clojure dockerized service (leiningen) |
 | [pinning-test-dockerhub](https://github.com/slenderslack/pinning-test-dockerhub) | DockerHub Build | DockerHub (public) |
-| [pinning-test](https://github.com/slenderslack/pinning-test) | DockerHub Build | DockerHub (private) |
-| [pinning-test-actions-dockerhub](https://github.com/slenderslack/pinning-test-actions-dockerhub) | GitHub Action | DockerHub (public) |
-| [distroless-pinning-test](https://github.com/slenderslack/distroless-pinning-test) | Google Cloud Build | GCR (public) |
+| [pinning-test](https://github.com/slenderslack/pinning-test) | DockerHub Build | DockerHub (private) | simple Dockerfile based on ubuntu |
+| [pinning-test-actions-dockerhub](https://github.com/slenderslack/pinning-test-actions-dockerhub) | GitHub Action | DockerHub (public) | simple Dockerfile based on ubuntu |
+| [distroless-pinning-test](https://github.com/slenderslack/distroless-pinning-test) | Google Cloud Build | GCR (public) | dockerized deps.edn JVM app |
 
 ### Setting up AWS Resources
 
@@ -47,12 +47,21 @@ aws cloudformation create-stack \
 
 Example template for setting up GCR PubSub Topic subscription to send events to Atomist (as described in [Atomist docs](https://docs.atomist.com/integration/gcr/) )
 
-```
+```bash
+gcloud deployment-manager deployments create atomist-gcr-integration \
+    --config gcp/atomist-gcr-integration-config.yaml
 ```
 
-Example template for setting up the Google `Cloud Build` projects used in the above examples:
+Setting up the Google `Cloud Build` triggers used in the above examples:
 
-```
+```bash
+gcloud beta builds triggers create github \
+    --name pinning-test-gcr \
+    --repo-name pinning-test-gcr \
+    --repo-owner slenderslack \
+    --branch-pattern "^.*$" \
+    --build-config "./cloudbuild.yaml"
+gcloud beta builds triggers list
 ```
 
 ### Setting up DockerHub Resources
@@ -60,3 +69,5 @@ Example template for setting up the Google `Cloud Build` projects used in the ab
 Everything is manual (you just have to use their UI).
 
 [codebuild-with-webhook]: https://thomasstep.com/blog/cloudformation-example-for-codebuild-with-a-webhook
+[gcloud-add-github-trigger]: https://cloud.google.com/sdk/gcloud/reference/beta/builds/triggers/create/github
+

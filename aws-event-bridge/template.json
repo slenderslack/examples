@@ -87,7 +87,7 @@
                         "PolicyName": "EC2ContainerRegistryReadOnly"
                     }
                 ],
-                "RoleName": "atomist-ecr-integration-1"
+                "RoleName": "atomist-ecr-integration"
             },
             "Type": "AWS::IAM::Role"
         },
@@ -198,6 +198,12 @@
                 ]
             },
             "Type": "AWS::Events::Rule"
+        }
+    },
+    "Outputs": {
+        "AssumeRoleArn": {
+            "Description": "this is the role Arn that will be configured in the Atomist Ecr Integration panel",
+            "Value": {"Fn::GetAtt": ["AssumeRoleEcrAccess", "Arn"]}
         }
     }
 }
